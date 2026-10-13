@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import '../styles/tribunal.css';
+import SiteFooter from '../components/SiteFooter.astro';
 import {
   CPU_CLASSES,
   CPU_CLASS_IDS,
@@ -61,7 +62,7 @@ const locationGroups: { label: string; ids: LocationId[] }[] = LOCATION_GROUPS.m
       </div>
     </header>
 
-    <main class="mx-auto max-w-6xl px-5 pb-16 pt-10 sm:px-8 sm:pt-14">
+    <main class="mx-auto max-w-6xl px-5 pb-8 pt-10 sm:px-8 sm:pt-14">
       <section class="mb-9 sm:mb-11">
         <p class="eyebrow mb-3">VPS BUDGET TRIBUNAL <span class="mx-1 text-[#b6beb6]">/</span> BETA</p>
         <h1 class="hero-title">Is your VPS budget<br class="hidden sm:block" /> actually realistic?</h1>
@@ -334,11 +335,13 @@ const locationGroups: { label: string; ids: LocationId[] }[] = LOCATION_GROUPS.m
         </aside>
       </div>
 
-      <footer class="mt-9 flex flex-col gap-2 border-t border-[#dfe4de] pt-5 text-[10px] text-[#7a847b] sm:flex-row sm:items-center sm:justify-between">
-        <p>Built for bargain hunters, not provider rankings.</p>
-        <p><a class="footer-link" href="https://lowendtalk.com/" target="_blank" rel="noreferrer">LowEndTalk</a> is where the offers happen. This tool just does the napkin math.</p>
-      </footer>
-    </main>
+      </main>
+
+    <SiteFooter>
+      <p>Built for bargain hunters, not provider rankings.</p>
+      <p><a class="footer-link" href="https://lowendtalk.com/" target="_blank" rel="noreferrer">LowEndTalk</a> is where the offers happen. This tool just does the napkin math.</p>
+    </SiteFooter>
+
     <script src="../scripts/vps-budget.ts"></script>
   </body>
 </html>

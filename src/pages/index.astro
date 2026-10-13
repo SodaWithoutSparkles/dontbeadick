@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 
 const tools = [
   {
@@ -18,52 +19,54 @@ const tools = [
 ---
 
 <Layout title="dontbeadick.lol">
-  <main class="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center gap-12 px-6 py-20">
-    <header class="space-y-4">
-      <p class="font-mono text-xs tracking-[0.3em] text-neutral-500 uppercase">
-        est. 2026
-      </p>
-      <h1
-        class="text-4xl font-bold tracking-tight text-balance sm:text-6xl"
-      >
-        dontbeadick<span class="text-lime-400">.lol</span>
-      </h1>
-      <p class="max-w-prose text-lg text-neutral-400">
-        A small collection of useful tools with unhelpful attitudes.
-      </p>
-    </header>
+  <header class="site-header">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+      <span class="wordmark">
+        <span class="wordmark-mark" aria-hidden="true">d/</span>
+        <span>dontbeadick<span class="font-normal text-[#7b857c]">.lol</span></span>
+      </span>
+      <div class="flex items-center gap-2 text-[11px] font-medium text-[#68736a]">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#568564]"></span>
+        <span>Small tools for the internet</span>
+      </div>
+    </div>
+  </header>
 
-    <ul class="grid gap-4 sm:grid-cols-2">
+  <main class="mx-auto max-w-6xl px-5 pb-10 pt-12 sm:px-8 sm:pt-16">
+    <section class="mb-9 sm:mb-11">
+      <p class="eyebrow mb-3">DON'T BE A DICK <span class="mx-1 text-[#b6beb6]">/</span> EST. 2026</p>
+      <h1 class="hero-title">Tools with<br class="hidden sm:block" /> unhelpful attitudes.</h1>
+      <p class="hero-copy mt-4">
+        A small collection of practical, mildly rude internet tools. Describe your
+        problem, get a straight answer, and go do the thing. No accounts, no
+        tracking, no newsletter.
+      </p>
+    </section>
+
+    <div class="grid items-start gap-5 sm:grid-cols-2">
       {
-        tools.map((tool) => (
-          <li class="rounded-xl border border-neutral-800 bg-neutral-900/40 p-5">
-            <div class="flex items-baseline justify-between gap-3">
-              <h2 class="font-semibold text-neutral-100">
-                {tool.status === 'live' ? (
-                  <a class="hover:text-lime-400" href={tool.href}>
-                    {tool.name} →
-                  </a>
-                ) : (
-                  tool.name
-                )}
-              </h2>
-              <span
-                class={`font-mono text-[10px] tracking-widest uppercase ${
-                  tool.status === 'live' ? 'text-lime-500' : 'text-neutral-600'
-                }`}
-              >
-                {tool.status}
-              </span>
-            </div>
-            <p class="mt-2 text-sm text-neutral-400">{tool.blurb}</p>
-          </li>
-        ))
+        tools.map((tool) => {
+          const Tag = tool.status === 'live' ? 'a' : 'div';
+          return (
+            <Tag href={tool.status === 'live' ? tool.href : undefined} class="tool-card">
+              <div class="tool-card-head">
+                <h2 class="tool-card-name">{tool.name}</h2>
+                <span class="status-tag" data-status={tool.status}>
+                  {tool.status}
+                </span>
+              </div>
+              <p class="tool-card-blurb">{tool.blurb}</p>
+              <p class="tool-card-cta">
+                {tool.status === 'live' ? 'Open the tribunal →' : 'Not built yet'}
+              </p>
+            </Tag>
+          );
+        })
       }
-    </ul>
-
-    <footer class="border-t border-neutral-900 pt-6 text-sm text-neutral-600">
-      <a class="hover:text-neutral-300" href="https://lowendtalk.com">Ask the
-        experts</a>
-    </footer>
+    </div>
   </main>
+
+  <SiteFooter>
+    <p>I bought the domain for cheap and don't know what to do with it. Issues and PR's welcome.</p>
+  </SiteFooter>
 </Layout>
