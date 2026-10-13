@@ -1,0 +1,344 @@
+---
+import '../styles/global.css';
+import '../styles/tribunal.css';
+import {
+  CPU_CLASSES,
+  CPU_CLASS_IDS,
+  DEFAULT_INPUT,
+  judge,
+  LOCATION_IDS,
+  LOCATIONS,
+  LOCATION_GROUPS,
+  MEMORY_GENERATIONS,
+  MEMORY_IDS,
+  money,
+  PORT_IDS,
+  PORT_SPEEDS,
+  verdictCopy,
+  type LocationId,
+} from '../lib/vps-tribunal';
+
+const initial = judge(DEFAULT_INPUT);
+const initialCopy = verdictCopy(initial);
+const initialBreakdown = initial.breakdown;
+const initialRows = [
+  ['Platform & virtualisation', initialBreakdown.platform],
+  ['CPU', initialBreakdown.cpu],
+  ['Memory', initialBreakdown.ram],
+  ['NVMe storage', initialBreakdown.nvme],
+  ['SSD storage', initialBreakdown.ssd],
+  ['HDD storage', initialBreakdown.hdd],
+  ['Port speed', initialBreakdown.port],
+  [DEFAULT_INPUT.transferMode === 'unmetered' ? 'Unmetered traffic' : 'Traffic allowance', initialBreakdown.transfer + initialBreakdown.unmetered],
+  ['Public IPv4', initialBreakdown.ipv4],
+].filter(([, amount]) => Number(amount) > 0);
+const locationGroups: { label: string; ids: LocationId[] }[] = LOCATION_GROUPS.map((group) => ({
+  label: group,
+  ids: LOCATION_IDS.filter((id) => LOCATIONS[id].group === group),
+}));
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f6f2" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="A rough reality check for LowEndTalk-style VPS budgets. Configure CPU, RAM, storage, bandwidth and location, then see the trade-offs." />
+    <title>VPS Budget Tribunal — Don't Be a Dick</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+        <a class="wordmark" href="/" aria-label="Don't Be a Dick home">
+          <span class="wordmark-mark" aria-hidden="true">d/</span>
+          <span>dontbeadick<span class="font-normal text-[#7b857c]">.lol</span></span>
+        </a>
+        <div class="flex items-center gap-2 text-[11px] font-medium text-[#68736a]">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#568564]"></span>
+          <span>Small tools for the internet</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-5 pb-16 pt-10 sm:px-8 sm:pt-14">
+      <section class="mb-9 sm:mb-11">
+        <p class="eyebrow mb-3">VPS BUDGET TRIBUNAL <span class="mx-1 text-[#b6beb6]">/</span> BETA</p>
+        <h1 class="hero-title">Is your VPS budget<br class="hidden sm:block" /> actually realistic?</h1>
+        <p class="hero-copy mt-4">Build the box you want. Get a rough monthly estimate, see which requirements cost the most, and share the result with the LowEndTalk crowd.</p>
+      </section>
+
+      <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] lg:gap-6">
+        <form id="tribunal-form" class="panel overflow-hidden" autocomplete="off">
+          <section class="form-section">
+            <div class="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p class="section-kicker mb-1">01 / Your budget</p>
+                <h2 class="panel-heading">Start with the number</h2>
+              </div>
+              <span class="text-[11px] text-[#828b83]">USD · always compared monthly</span>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="field-label" for="budget"><span id="budget-label">Maximum monthly budget</span></label>
+                <div class="input-unit">
+                  <input class="field-input" type="number" id="budget" name="budget" min="0.01" max="1000000" step="0.01" value={DEFAULT_INPUT.budget} required />
+                  <span id="budget-unit">USD</span>
+                </div>
+                <p id="budget-help" class="field-help">Enter what you would pay per month. Annual billing is priced separately below.</p>
+              </div>
+              <div>
+                <label class="field-label" for="billing">Billing period</label>
+                <select class="field-select" id="billing" name="billing">
+                  <option value="monthly" selected={DEFAULT_INPUT.billing === 'monthly'}>Pay monthly</option>
+                  <option value="annual" selected={DEFAULT_INPUT.billing === 'annual'}>Pay annually (prepaid)</option>
+                </select>
+                <p class="field-help">Annual plans are modelled at roughly 17% below the monthly price.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <div class="mb-5">
+              <p class="section-kicker mb-1">02 / Compute</p>
+              <h2 class="panel-heading">CPU and memory</h2>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="field-label" for="vcpu">Number of vCPUs</label>
+                <input class="field-input" type="number" id="vcpu" name="vcpu" min="0.25" max="512" step="0.25" value={DEFAULT_INPUT.vcpu} required />
+                <p class="field-help">Advertised vCPU count, not dedicated cores.</p>
+              </div>
+              <div>
+                <label class="field-label" for="cpuClass">Expected CPU generation</label>
+                <select class="field-select" id="cpuClass" name="cpuClass">
+                  {CPU_CLASS_IDS.map((id) => <option value={id} selected={id === DEFAULT_INPUT.cpuClass}>{CPU_CLASSES[id].label}</option>)}
+                </select>
+                <p id="cpu-class-help" class="field-help">{CPU_CLASSES[DEFAULT_INPUT.cpuClass].examples}. {CPU_CLASSES[DEFAULT_INPUT.cpuClass].description}</p>
+              </div>
+              <div>
+                <label class="field-label" for="ramGb">RAM</label>
+                <div class="input-unit">
+                  <input class="field-input" type="number" id="ramGb" name="ramGb" min="0.25" max="4096" step="0.25" value={DEFAULT_INPUT.ramGb} required />
+                  <span>GB</span>
+                </div>
+              </div>
+              <div>
+                <label class="field-label" for="ramGeneration">Memory generation</label>
+                <select class="field-select" id="ramGeneration" name="ramGeneration">
+                  {MEMORY_IDS.map((id) => <option value={id} selected={id === DEFAULT_INPUT.ramGeneration}>{MEMORY_GENERATIONS[id].label}</option>)}
+                </select>
+              </div>
+            </div>
+            <p class="field-help mt-3">CPU families are broad performance classes. The exact model, scheduling policy and sustained CPU limits still matter.</p>
+          </section>
+
+          <section class="form-section">
+            <div class="mb-5">
+              <p class="section-kicker mb-1">03 / Storage</p>
+              <h2 class="panel-heading">What needs to fit on disk?</h2>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label class="field-label" for="nvmeGb">NVMe</label>
+                <div class="input-unit">
+                  <input class="field-input" type="number" id="nvmeGb" name="nvmeGb" min="0" max="1000000" step="1" value={DEFAULT_INPUT.nvmeGb} />
+                  <span>GB</span>
+                </div>
+              </div>
+              <div>
+                <label class="field-label" for="ssdGb">SATA / other SSD</label>
+                <div class="input-unit">
+                  <input class="field-input" type="number" id="ssdGb" name="ssdGb" min="0" max="1000000" step="1" value={DEFAULT_INPUT.ssdGb} />
+                  <span>GB</span>
+                </div>
+              </div>
+              <div>
+                <label class="field-label" for="hddGb">HDD</label>
+                <div class="input-unit">
+                  <input class="field-input" type="number" id="hddGb" name="hddGb" min="0" max="1000000" step="1" value={DEFAULT_INPUT.hddGb} />
+                  <span>GB</span>
+                </div>
+              </div>
+            </div>
+            <p class="field-help mt-3">Enter capacity, not the number of physical drives. Leave unused types at zero.</p>
+          </section>
+
+          <section class="form-section">
+            <div class="mb-5">
+              <p class="section-kicker mb-1">04 / Network</p>
+              <h2 class="panel-heading">Port speed and traffic</h2>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="field-label" for="portSpeed">Advertised port speed</label>
+                <select class="field-select" id="portSpeed" name="portSpeed">
+                  {PORT_IDS.map((id) => <option value={id} selected={id === DEFAULT_INPUT.portSpeed}>{PORT_SPEEDS[id].label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="transferMode">Traffic accounting</label>
+                <select class="field-select" id="transferMode" name="transferMode">
+                  <option value="egress" selected={DEFAULT_INPUT.transferMode === 'egress'}>Outbound only</option>
+                  <option value="total" selected={DEFAULT_INPUT.transferMode === 'total'}>Inbound + outbound</option>
+                  <option value="unmetered" selected={DEFAULT_INPUT.transferMode === 'unmetered'}>Unmetered (fair use)</option>
+                </select>
+              </div>
+              <div id="traffic-amount-wrap" class="sm:col-span-2">
+                <label class="field-label" for="transferTb">Included transfer per month</label>
+                <div class="input-unit">
+                  <input class="field-input" type="number" id="transferTb" name="transferTb" min="0" max="1000000" step="0.5" value={DEFAULT_INPUT.transferTb} />
+                  <span>TB/mo</span>
+                </div>
+                <p class="field-help">Bandwidth is loosely tiered. The same TB figure can mean very different things on a 1 Gbps and a 10 Gbps port.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <div class="mb-5">
+              <p class="section-kicker mb-1">05 / Location</p>
+              <h2 class="panel-heading">Where can it live?</h2>
+              <p class="field-help mt-1">Select any cities you would accept. No selection means anywhere.</p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-3">
+              {locationGroups.map((group) => (
+                <fieldset class="min-w-0">
+                  <legend class="location-group-title">{group.label}</legend>
+                  <div class="flex flex-col gap-0.5">
+                    {group.ids.map((id) => (
+                      <label class="location-option">
+                        <input type="checkbox" name="locations" value={id} />
+                        <span class="text-[11px]">{LOCATIONS[id].label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+            <div class="mt-4 border-t border-[#edf0eb] pt-4">
+              <label class="check-option">
+                <input type="checkbox" name="publicIpv4" checked={DEFAULT_INPUT.publicIpv4} />
+                <span class="text-[12px] font-semibold">Include a public IPv4 address</span>
+              </label>
+              <p class="field-help">IPv6-only, NAT and tunnel-based access can be cheaper, but aren't equivalent.</p>
+            </div>
+          </section>
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-[#fafbf8] px-5 py-4 sm:px-6">
+            <button type="button" class="text-button" id="reset-form">Reset to defaults</button>
+            <span class="text-[10px] text-[#858e85]">Updates as you type</span>
+          </div>
+        </form>
+
+        <aside class="result-panel panel" aria-label="VPS budget result">
+          <div class="result-head">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p class="section-kicker">Your verdict</p>
+              <span id="result-badge" class="result-badge" data-verdict={initial.id}>{initialCopy.title}</span>
+            </div>
+            <p id="result-summary" class="result-copy mt-3">{initialCopy.summary}</p>
+            <div id="result-body" class="mt-2 space-y-1">
+              {initialCopy.body.map((line) => <p class="small-note">{line}</p>)}
+            </div>
+            <div id="conflict-wrap" class="conflict-box mt-4 hidden">
+              <p class="section-kicker">Fix these first</p>
+              <ul id="conflict-list" class="mt-2 list-disc space-y-1 pl-4 text-[11px] text-[#7a3b34]">
+                {initial.impossibleReasons.map((reason) => <li>{reason}</li>)}
+              </ul>
+            </div>
+            <div class="mt-5">
+              <p class="section-kicker">Modelled fair price</p>
+              <div class="result-price"><span id="result-fair">{money(initial.fair)}</span><small>/ month</small></div>
+              <p id="result-period-total" class="small-note mt-1 hidden"></p>
+            </div>
+            <div class="compare-block">
+              <div class="compare-row"><span>Your maximum budget</span><strong id="result-budget">{money(initial.enteredBudget)}/{initial.billing === 'annual' ? 'yr' : 'mo'}</strong></div>
+              <div class="budget-track" aria-hidden="true"><div id="budget-fill" class="budget-fill" style={`width:${Math.min(initial.ratio * 100, 100)}%`}></div></div>
+              <p id="result-ratio" class="small-note mt-2">Your budget is {Math.round(initial.ratio * 100)}% of the estimate.</p>
+            </div>
+          </div>
+
+          <section class="result-subsection">
+            <div class="flex items-baseline justify-between gap-3">
+              <h2 class="panel-heading">Price breakdown</h2>
+              <span class="text-[10px] text-[#879087]">USD / month</span>
+            </div>
+            <div id="breakdown-list" class="breakdown-list">
+              {initialRows.map(([label, value]) => (
+                <div class="breakdown-row"><span>{label}</span><strong>{money(Number(value))}</strong></div>
+              ))}
+            </div>
+            <div class="breakdown-row breakdown-total"><span>Estimated total</span><strong id="breakdown-total">{money(initial.fair)}</strong></div>
+            <div id="location-range-wrap" class="mt-4 hidden">
+              <p class="section-kicker">Selected locations</p>
+              <div id="location-estimates" class="estimate-list"></div>
+            </div>
+          </section>
+
+          <section class="result-subsection">
+            <div class="flex items-baseline justify-between gap-3">
+              <h2 class="panel-heading">Ways to cut the cost</h2>
+              <span class="text-[10px] text-[#879087]">best first</span>
+            </div>
+            <div id="trade-list" class="mt-2">
+              {initial.trades.slice(0, 4).map((trade) => (
+                <div class="trade-row">
+                  <div><p class="trade-name">{trade.label}</p><p class="trade-detail">{trade.detail}</p></div>
+                  <p class="trade-saving">−{money(trade.saves)}<span class="text-[9px] font-medium">/mo</span></p>
+                </div>
+              ))}
+            </div>
+            <div id="plan-wrap" class:list={['mt-4 rounded-md bg-[#f7f8f5] px-3 py-3', initial.budgetPlan.actions.length > 1 ? '' : 'hidden']}>
+              <p class="section-kicker">Route to your budget</p>
+              <div id="plan-list" class="mt-2 space-y-1">
+                {initial.budgetPlan.actions.slice(0, 6).map((action, index) => (
+                  <div class="plan-step">
+                    <span class="plan-index">{index + 1}</span>
+                    <span class="plan-label">{action.label}</span>
+                    <span class="plan-saving">−{money(action.saves)}/mo</span>
+                  </div>
+                ))}
+              </div>
+              <p id="plan-summary" class="small-note mt-2">
+                {initial.budgetPlan.actions.length === 1
+                  ? '1 change brings the estimate inside your budget.'
+                  : initial.budgetPlan.reachesTarget
+                    ? `${initial.budgetPlan.actions.length} changes bring the estimate to ${money(initial.budgetPlan.projectedFair)}/mo — inside your budget.`
+                    : `Even after ${initial.budgetPlan.actions.length} changes the estimate is ${money(initial.budgetPlan.projectedFair)}/mo. The budget is not reachable from this spec.`}
+              </p>
+            </div>
+            {initial.levers[0] && (
+              <div id="billing-lever" class="mt-4 rounded-md bg-[#f7f8f5] px-3 py-3">
+                <p class="section-kicker">Billing lever</p>
+                <div class="mt-1 flex items-start justify-between gap-3">
+                  <div><p id="lever-label" class="text-[11px] font-bold">{initial.levers[0].label}</p><p id="lever-detail" class="trade-detail">{initial.levers[0].detail}</p></div>
+                  <span id="annual-saving" class="trade-saving">−{money(initial.levers[0].saves)}<span class="text-[9px] font-medium">/mo</span></span>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section class="result-subsection">
+            <details class="notes" id="risk-notes">
+              <summary id="risk-summary">Things to double-check ({initial.risks.length})</summary>
+              <div class="notes-content"><ul id="risk-list">{initial.risks.map((risk) => <li>{risk}</li>)}</ul></div>
+            </details>
+            <p class="disclaimer mt-4">This is a transparent heuristic, not a live price index. Real offers differ in sustained CPU, storage I/O, routing, fair-use limits, support and renewal price.</p>
+          </section>
+
+          <div class="flex flex-wrap gap-2 border-t border-[#dfe4de] bg-[#fafbf8] px-5 py-4 sm:px-6">
+            <button type="button" id="copy-summary" class="primary-button">Copy forum summary <span aria-hidden="true">↗</span></button>
+            <button type="button" id="copy-link" class="secondary-button">Copy link</button>
+            <span id="copy-status" class="w-full text-[10px] text-[#69736b]" role="status" aria-live="polite"></span>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="mt-9 flex flex-col gap-2 border-t border-[#dfe4de] pt-5 text-[10px] text-[#7a847b] sm:flex-row sm:items-center sm:justify-between">
+        <p>Built for bargain hunters, not provider rankings.</p>
+        <p><a class="footer-link" href="https://lowendtalk.com/" target="_blank" rel="noreferrer">LowEndTalk</a> is where the offers happen. This tool just does the napkin math.</p>
+      </footer>
+    </main>
+    <script src="../scripts/vps-budget.ts"></script>
+  </body>
+</html>
